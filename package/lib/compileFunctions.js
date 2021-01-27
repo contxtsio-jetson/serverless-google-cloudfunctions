@@ -7,6 +7,9 @@ const path = require('path');
 const _ = require('lodash');
 const BbPromise = require('bluebird');
 
+/* global variables */
+const VALID_TYPES = new Set(['VPC_CONNECTOR_EGRESS_SETTINGS_UNSPECIFIED', 'PRIVATE_RANGES_ONLY', 'ALL_TRAFFIC']);
+
 module.exports = {
   compileFunctions() {
     const artifactFilePath = this.serverless.service.package.artifact;
@@ -24,6 +27,8 @@ module.exports = {
       validateHandlerProperty(funcObject, functionName);
       validateEventsProperty(funcObject, functionName);
       validateVpcConnectorProperty(funcObject, functionName);
+      validateVpcEgressProperty(funcObject, functionName);
+      validateVpcIngressProperty(funcObject, functionName);
 
       const funcTemplate = getFunctionTemplate(
         funcObject,
@@ -57,19 +62,19 @@ module.exports = {
       }
 
       if (funcObject.vpc) {
-        _.assign(funcTemplate.properties, {
+        Object.assign(funcTemplate.properties, {
           vpcConnector: _.get(funcObject, 'vpc') || _.get(this, 'serverless.service.provider.vpc'),
         });
       }
 
       if (funcObject.egress) {
-        _.assign(funcTemplate.properties, {
+        Object.assign(funcTemplate.properties, {
           vpcConnectorEgressSettings: _.get(funcObject, 'egress') || _.get(this, 'serverless.service.provider.egress'),
         });
       }
 
       if (funcObject.ingress) {
-        _.assign(funcTemplate.properties, {
+        Object.assign(funcTemplate.properties, {
           ingressSettings: _.get(funcObject, 'ingress') || _.get(this, 'serverless.service.provider.ingress'),
         });
       }
@@ -82,7 +87,7 @@ module.exports = {
         delete funcTemplate.properties.environmentVariables;
       }
 
-      funcTemplate.properties.labels = _.assign(
+      funcTemplate.properties.labels = Object.assign(
         {},
         _.get(this, 'serverless.service.provider.labels') || {},
         _.get(funcObject, 'labels') || {} // eslint-disable-line comma-dangle
@@ -177,8 +182,7 @@ const validateVpcConnectorProperty = (funcObject, functionName) => {
  */
 const validateVpcEgressProperty = (funcObject, functionName) => {
   if (funcObject.egress && typeof funcObject.egress === 'string') {
-    const validTypes = ['VPC_CONNECTOR_EGRESS_SETTINGS_UNSPECIFIED', 'PRIVATE_RANGES_ONLY', 'ALL_TRAFFIC'];
-    if (!validTypes.includes(funcObject.egress)) {
+    if (!VALID_TYPES.includes(funcObject.egress)) {
       const errorMessage = [
         `The function "${functionName}" has an invalid egress setting`,
         ' Egress setting should be ALL_TRAFFIC, PRIVATE_RANGES_ONLY or VPC_CONNECTOR_EGRESS_SETTINGS_UNSPECIFIED',
@@ -197,8 +201,7 @@ const validateVpcEgressProperty = (funcObject, functionName) => {
  */
 const validateVpcIngressProperty = (funcObject, functionName) => {
   if (funcObject.ingress && typeof funcObject.ingress === 'string') {
-    const validTypes = ['INGRESS_SETTINGS_UNSPECIFIED', 'ALLOW_ALL', 'ALLOW_INTERNAL_ONLY', 'ALLOW_INTERNAL_AND_GCLB'];
-    if (!validTypes.includes(funcObject.ingress)) {
+    if (!VALID_TYPES.includes(funcObject.ingress)) {
       const errorMessage = [
         `The function "${functionName}" has an invalid ingress setting`,
         ' Ingress setting should be ALLOW_ALL, ALLOW_INTERNAL_ONLY, ALLOW_INTERNAL_AND_GCLB or INGRESS_SETTINGS_UNSPECIFIED',
